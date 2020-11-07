@@ -5,6 +5,8 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 
+#define BUFSIZE 0xff
+
 void error_handling(const char * send_msg) {
     perror(send_msg);
     exit(1);
@@ -31,18 +33,18 @@ int main(int argc, char ** argv) {
     if(connect(clnt_sock, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) == -1)
         error_handling("connect() error");
     
-    char send_msg[0xFF];
-    char recv_msg[0xFF];
+    char send_msg[BUFSIZE];
+    char recv_msg[BUFSIZE];
     int recv_len;
     while(1) {
         printf("Input message (q to quit) > ");
-        fgets(send_msg, sizeof(send_msg), stdin);
+        fgets(send_msg, sizeof(send_msg) - 1, stdin);
 
-        if(!strcmp(send_msg, "q"))
+        if(!strcmp(send_msg, "q\n"))
             break;
 
         send(clnt_sock, send_msg, strlen(send_msg), 0);
-        if(recv_len = recv(clnt_sock, recv_msg, sizeof(recv_msg) - 1, 0) == 0)
+        if((recv_len = recv(clnt_sock, recv_msg, sizeof(recv_msg) - 1, 0)) <= 0)
             break;
         recv_msg[recv_len] = 0;
         printf("Massage from server : %s \n", recv_msg);

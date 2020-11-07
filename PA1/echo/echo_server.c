@@ -5,6 +5,8 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 
+#define BUFSIZE 0xff
+
 void error_handling(const char * msg) {
     perror(msg);
     exit(1);
@@ -27,7 +29,7 @@ int main(int argc, char ** argv) {
     if(listen_sock == -1)
         error_handling("socket() error");
 
-    ////////    here!
+    getchar(); ////////    here!
 
     memset(&serv_addr, 0, sizeof(serv_addr));
     serv_addr.sin_family = AF_INET;
@@ -37,13 +39,13 @@ int main(int argc, char ** argv) {
     if(bind(listen_sock, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0)
         error_handling("bind() error");
 
-    ////////    here!
+    getchar(); ////////    here!
 
     
     if(listen(listen_sock, 5) == -1)
         error_handling("listen() error");
 
-    ////////    here!
+    getchar(); ////////    here!
 
     
     printf("listening to %s port\n", argv[1]);
@@ -56,11 +58,12 @@ int main(int argc, char ** argv) {
     printf("client (%s/%d) connected!\n", inet_ntoa(clnt_addr.sin_addr), ntohs(clnt_addr.sin_port));
 
 
-    char msg[0xFF];
+    char msg[BUFSIZE];
     int str_len;
-    while((str_len = recv(conn_sock, msg, sizeof(msg), 0)) != 0) {
+    while((str_len = recv(conn_sock, msg, sizeof(msg) - 1, 0)) != 0) {
         send(conn_sock, msg, str_len, 0);
-        write(stdout, msg, str_len);
+        msg[str_len] = 0;
+        puts(msg);
     }
     close(conn_sock);
     return 0;
