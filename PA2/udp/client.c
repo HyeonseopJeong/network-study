@@ -43,13 +43,12 @@ send_file(int socket, const char * filename, struct sockaddr * serv_addr_ptr) {
     while((send_bytes = fread(buf, sizeof(char), sizeof(buf), fp)) > 0) {
         sendto(socket, buf, send_bytes, 0, serv_addr_ptr, sizeof(addr));
         total_send_bytes += send_bytes;
-        printf("%s progress: %dByte(s) (sending)\n", filename, total_send_bytes);
     }
 
     //파일 내용이 모두 전송되면 0 크기의 datagram 보내기.
     sendto(socket, buf, 0, 0, serv_addr_ptr, sizeof(addr));
     
-    printf("done.\n");
+    printf("%s sending done :  (%d Bytes)\n", filename, total_send_bytes);
     fclose(fp);
     return 0;
 }
