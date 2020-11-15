@@ -33,9 +33,9 @@ recv_file(int socket) {
     while((read_bytes = recv(socket, buf, sizeof(buf), 0)) > 0) {
         total_read_bytes += read_bytes;
         fwrite(buf, sizeof(char), read_bytes, fp);
-        printf("%s progress: %dByte(s) (receiving)\n", filename , total_read_bytes);
     }
-    printf("done.\n");
+    
+    printf("%s receiving done (%d Bytes)\n", filename, total_read_bytes);
     fclose(fp);
     return 0;
 }
