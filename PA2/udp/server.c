@@ -47,8 +47,9 @@ recv_file(int socket) {
     while((read_bytes = recvfrom(socket, buf, sizeof(buf), 0, (struct sockaddr *) &clnt_addr, &clnt_addr_size)) > 0) {
         total_read_bytes += read_bytes;
         fwrite(buf, sizeof(char), read_bytes, fp);
+        printf("%s receiving (%d Bytes) ...              \r", filename, total_read_bytes);
     }
-    printf("%s receiving done (%d Bytes)\n", filename, total_read_bytes);
+    printf("%s receiving done!                            \n", filename);
     fclose(fp);
     return 0;
 }
@@ -77,6 +78,11 @@ int main(int argc, char ** argv) {
         error_handling("bind() error");
 
     char filename[BUFSIZE];
+
+
+    //struct timeval optVal = {3, 0}; 
+    //int optLen = sizeof(optVal);
+    //setsockopt(socket, SOL_SOCKET, SO_RCVTIMEO, &optVal, optLen);
 
     while(1) {
         recv_file(serv_sock);    
