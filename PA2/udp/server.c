@@ -24,25 +24,65 @@ recv_file(int socket) {
     struct sockaddr_in clnt_addr;
     int clnt_addr_size = sizeof(clnt_addr);
 
-    //파일 명 받기
-    read_bytes = recvfrom(socket, filename, sizeof(filename), 0, (struct sockaddr *) &clnt_addr, &clnt_addr_size);
-    if(read_bytes <= 0) {
+    sleep(2);   //일부러 딜레이.. 쓰레기 값들이 다 도착하는걸 기다림.
+    printf("wait for client...\n");
+
+    //파일 명 받기 (이전 client의 EOF packet 무시하기.) -- '파일명 앞에 "!@#"를 붙이는 규칙으로 파일명임을 인식'
+    while((read_bytes = recvfrom(socket, buf, sizeof(buf) - 1, 0, (struct sockaddr *) &clnt_addr, &clnt_addr_size)) == 0
+            || buf[0] != '!' || buf[1] != '@' || buf[2] != '#');
+
+
+    buf[read_bytes] = 0;
+    strcpy(filename, buf + 3);
+    if(read_bytes < 0) {
         error_handling("filename recv() error");
     }
     filename[read_bytes] = 0;
 
-    printf("Receiving from %s/%d\n", inet_ntoa(clnt_addr.sin_addr), ntohs(clnt_addr.sin_port));
-    
-    //파일명 체크
-    sendto(socket, filename, strlen(filename), 0, (struct sockaddr *) &clnt_addr, sizeof(clnt_addr));
-    read_bytes = recvfrom(socket, buf, sizeof(buf), 0, (struct sockaddr *) &clnt_addr, &clnt_addr_size);
-    buf[read_bytes] = 0;
-    if(strcmp(buf, "OK") != 0) {
-        printf("file name lost!\n");
-        return 1;
-    }
+    printf("filename : %s (from %s/%d)\n", filename, inet_ntoa(clnt_addr.sin_addr), ntohs(clnt_addr.sin_port));
+
 
     fp = fopen(filename, "wb");
+    if(fp == NULL)
+        error_handling("fopen() error");
+
+
+    //파일명 잘 받았다는 ACK 보내기
+    sendto(socket, buf, 0, 0, (struct sockaddr *)&clnt_addr, sizeof(clnt_addr));
+    
+    //최대 2secs 기다리기
+    int state;
+    fd_set fd_status;
+    struct timeval timeout;
+    FD_ZERO(&fd_status);
+
+    int loop = 1;
+
+    while(loop) {
+        FD_SET(socket, &fd_status);
+
+        timeout.tv_sec = 2; //2초 타임아웃
+        timeout.tv_usec = 0;
+
+        state = select(socket + 1, &fd_status, 0, 0, &timeout);
+        switch(state)
+        {
+            case -1:
+                error_handling("select() error");
+                
+            case 0:
+                printf("Time over..! (resending ACK)\n");            
+                sendto(socket, buf, 0, 0, (struct sockaddr *)&clnt_addr, sizeof(clnt_addr));
+                break;
+            default:
+                read_bytes = recvfrom(socket, buf, sizeof(buf), 0, (struct sockaddr *) &clnt_addr, &clnt_addr_size);
+                total_read_bytes += read_bytes;
+                fwrite(buf, sizeof(char), read_bytes, fp);
+                printf("start receiving file content!\n");
+                loop = 0;
+                break;
+        }
+    }
 
     while((read_bytes = recvfrom(socket, buf, sizeof(buf), 0, (struct sockaddr *) &clnt_addr, &clnt_addr_size)) > 0) {
         total_read_bytes += read_bytes;
@@ -51,6 +91,7 @@ recv_file(int socket) {
     }
     printf("%s receiving done!                            \n", filename);
     fclose(fp);
+
     return 0;
 }
 

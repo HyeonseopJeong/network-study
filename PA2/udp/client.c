@@ -26,20 +26,46 @@ send_file(int socket, const char * filename) {
     if((fp = fopen(filename, "rb")) == NULL) 
         error_handling("File not Exist");
 
-    //파일명 보내기
-    send(socket, filename, strlen(filename), 0);
+    buf[0] = '!';
+    buf[1] = '@';
+    buf[2] = '#';
+    strcpy(buf + 3, filename);
 
-    read_bytes = recv(socket, buf, sizeof(buf), 0);
-    buf[read_bytes] = 0;
-    if(strcmp(filename, buf) != 0) {
-        buf[0] = 'N'; buf[1] = 'O'; buf[2] = 0; 
-        send(socket, buf, strlen(buf), 0);
-        printf("file name lost!\n");
-        return 1;    
-    }
-    
-    buf[0] = 'O'; buf[1] = 'K'; buf[2] = 0; 
+    //파일명 보내기 (앞에 !@#을 붙여서 파일임을 알림.)
     send(socket, buf, strlen(buf), 0);
+
+
+    //최대 2secs 기다리기
+    int state;
+    fd_set fd_status;
+    struct timeval timeout;
+    FD_ZERO(&fd_status);
+
+    int loop = 1;
+
+    while(loop) {
+        FD_SET(socket, &fd_status);
+
+        timeout.tv_sec = 2; //2초 타임아웃
+        timeout.tv_usec = 0;
+
+        state = select(socket + 1, &fd_status, 0, 0, &timeout);
+        switch(state)
+        {
+            case -1:
+                error_handling("select error() error");
+                
+            case 0:
+                printf("Time over..! (resending filename..)\n");            
+                send(socket, filename, strlen(filename), 0);
+                break;
+            default:
+                read_bytes = recv(socket, buf, sizeof(buf), 0);
+                printf("filename sent successfully!\n");
+                loop = 0;
+                break;
+        }
+    }
 
     while((send_bytes = fread(buf, sizeof(char), sizeof(buf), fp)) > 0) {
         send(socket, buf, send_bytes, 0);
@@ -48,6 +74,10 @@ send_file(int socket, const char * filename) {
     }
 
     //파일 내용이 모두 전송되면 0 크기의 datagram 보내기.
+    send(socket, buf, 0, 0);
+    send(socket, buf, 0, 0);
+    send(socket, buf, 0, 0);
+    send(socket, buf, 0, 0);
     send(socket, buf, 0, 0);
     
     printf("%s sending done!                            \n", filename);
