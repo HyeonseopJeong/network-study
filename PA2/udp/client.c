@@ -14,7 +14,7 @@ void error_handling(const char * msg) {
 
 
 int 
-send_file(int socket, const char * filename, struct sockaddr * serv_addr_ptr) {
+send_file(int socket, const char * filename) {
     FILE * fp;
     char buf[BUFSIZE];
     int total_send_bytes = 0, send_bytes = 0;
@@ -27,27 +27,28 @@ send_file(int socket, const char * filename, struct sockaddr * serv_addr_ptr) {
         error_handling("File not Exist");
 
     //파일명 보내기
-    sendto(socket, filename, strlen(filename), 0, serv_addr_ptr, sizeof(addr));
-    read_bytes = recvfrom(socket, buf, sizeof(buf), 0, (struct sockaddr *) &addr, &addr_size);
+    send(socket, filename, strlen(filename), 0);
+
+    read_bytes = recv(socket, buf, sizeof(buf), 0);
     buf[read_bytes] = 0;
     if(strcmp(filename, buf) != 0) {
         buf[0] = 'N'; buf[1] = 'O'; buf[2] = 0; 
-        sendto(socket, buf, strlen(buf), 0, serv_addr_ptr, sizeof(addr));
+        send(socket, buf, strlen(buf), 0);
         printf("file name lost!\n");
         return 1;    
     }
     
     buf[0] = 'O'; buf[1] = 'K'; buf[2] = 0; 
-    sendto(socket, buf, strlen(buf), 0, serv_addr_ptr, sizeof(addr));
+    send(socket, buf, strlen(buf), 0);
 
     while((send_bytes = fread(buf, sizeof(char), sizeof(buf), fp)) > 0) {
-        sendto(socket, buf, send_bytes, 0, serv_addr_ptr, sizeof(addr));
+        send(socket, buf, send_bytes, 0);
         total_send_bytes += send_bytes;
         printf("%s sending (%d Bytes) ...              \r", filename, total_send_bytes);
     }
 
     //파일 내용이 모두 전송되면 0 크기의 datagram 보내기.
-    sendto(socket, buf, 0, 0, serv_addr_ptr, sizeof(addr));
+    send(socket, buf, 0, 0);
     
     printf("%s sending done!                            \n", filename);
     fclose(fp);
@@ -75,7 +76,11 @@ int main(int argc, char ** argv) {
     if(inet_aton(argv[1], &serv_addr.sin_addr) == 0)
         error_handling("inet_aton() error");
 
-    send_file(clnt_sock, argv[3], (struct sockaddr *) &serv_addr);
+
+    if(connect(clnt_sock, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) == -1)
+        error_handling("connect() error");
+
+    send_file(clnt_sock, argv[3]);
     
     close(clnt_sock);
     return 0;
