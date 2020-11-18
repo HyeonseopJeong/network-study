@@ -36,7 +36,7 @@ recv_file(int socket) {
         printf("%s receiving (%d Bytes) ...              \r", filename, total_read_bytes);
     }
     
-    printf("%s receiving done!                            \n", filename);
+    printf("\n%s receiving done!                            \n", filename);
     fclose(fp);
     return 0;
 }

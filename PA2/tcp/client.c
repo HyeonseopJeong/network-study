@@ -33,7 +33,7 @@ send_file(int socket, const char * filename) {
         printf("%s sending (%d Bytes) ...              \r", filename, total_send_bytes);
     }
 
-    printf("%s sending done!                            \n", filename);
+    printf("\n%s sending done!                            \n", filename);
     fclose(fp);
     return 0;
 }
