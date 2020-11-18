@@ -6,6 +6,7 @@
 #include <arpa/inet.h>
 
 #define BUFSIZE 1024
+#define EOF_PACKET "EOFEOFEOFEOF*&^$#@!EOFEOFEOF!@#$^&*EOFEOFEOF"
 
 void error_handling(const char * msg) {
     perror(msg);
@@ -24,10 +25,10 @@ recv_file(int socket) {
     struct sockaddr_in clnt_addr;
     int clnt_addr_size = sizeof(clnt_addr);
 
-    sleep(2);   //일부러 딜레이.. 쓰레기 값들이 다 도착하는걸 기다림.
+    usleep(100000);   //일부러 딜레이.. 쓰레기 값(이전 client의 잔여 packet)들이 다 도착하는걸 기다림. (0.1초)
     printf("wait for client...\n");
 
-    //파일 명 받기 (이전 client의 EOF packet 무시하기.) -- '파일명 앞에 "!@#"를 붙이는 규칙으로 파일명임을 인식'
+    //파일 명 받기 (이전 client의 packet들 무시하기.) -- '파일명 앞에 "!@#"를 붙이는 규칙으로 파일명임을 인식'
     while((read_bytes = recvfrom(socket, buf, sizeof(buf) - 1, 0, (struct sockaddr *) &clnt_addr, &clnt_addr_size)) == 0
             || buf[0] != '!' || buf[1] != '@' || buf[2] != '#');
 
@@ -84,12 +85,15 @@ recv_file(int socket) {
         }
     }
 
-    while((read_bytes = recvfrom(socket, buf, sizeof(buf), 0, (struct sockaddr *) &clnt_addr, &clnt_addr_size)) > 0) {
+    while((read_bytes = recvfrom(socket, buf, sizeof(buf) - 1, 0, (struct sockaddr *) &clnt_addr, &clnt_addr_size)) > 0) {
+        if(strcmp(buf, EOF_PACKET) == 0)
+            break;
+        
         total_read_bytes += read_bytes;
         fwrite(buf, sizeof(char), read_bytes, fp);
         printf("%s receiving (%d Bytes) ...              \r", filename, total_read_bytes);
     }
-    printf("%s receiving done!                            \n", filename);
+    printf("\n%s receiving done!                            \n", filename);
     fclose(fp);
 
     return 0;

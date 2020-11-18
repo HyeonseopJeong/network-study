@@ -4,8 +4,11 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <unistd.h>
 
 #define BUFSIZE 1024
+#define EOF_PACKET "EOFEOFEOFEOF*&^$#@!EOFEOFEOF!@#$^&*EOFEOFEOF"
+
 
 void error_handling(const char * msg) {
     perror(msg);
@@ -67,20 +70,29 @@ send_file(int socket, const char * filename) {
         }
     }
 
-    while((send_bytes = fread(buf, sizeof(char), sizeof(buf), fp)) > 0) {
+    while((send_bytes = fread(buf, sizeof(char), sizeof(buf) - 1, fp)) > 0) {
         send(socket, buf, send_bytes, 0);
         total_send_bytes += send_bytes;
-        printf("%s sending (%d Bytes) ...              \r", filename, total_send_bytes);
+        printf("%s sending (%d Bytes) ...   \r", filename, total_send_bytes);
+        usleep(500);    //flow control을 해줌. (micro sec 단위)
     }
 
-    //파일 내용이 모두 전송되면 0 크기의 datagram 보내기.
-    send(socket, buf, 0, 0);
-    send(socket, buf, 0, 0);
-    send(socket, buf, 0, 0);
-    send(socket, buf, 0, 0);
-    send(socket, buf, 0, 0);
+    memset(buf, sizeof(buf), 0);
+    strcpy(buf, EOF_PACKET);
+
+    //파일 내용이 모두 전송되면 eof packet 보내기.
+    send(socket, buf, sizeof(buf) - 1, 0);
+    send(socket, buf, sizeof(buf) - 1, 0);
+    send(socket, buf, sizeof(buf) - 1, 0);
+    send(socket, buf, sizeof(buf) - 1, 0);
+    send(socket, buf, sizeof(buf) - 1, 0);
+    send(socket, buf, sizeof(buf) - 1, 0);
+    send(socket, buf, sizeof(buf) - 1, 0);
+    send(socket, buf, sizeof(buf) - 1, 0);
+    send(socket, buf, sizeof(buf) - 1, 0);
+    send(socket, buf, sizeof(buf) - 1, 0);
     
-    printf("%s sending done!                            \n", filename);
+    printf("\n%s sending done!                            \n", filename);
     fclose(fp);
     return 0;
 }
