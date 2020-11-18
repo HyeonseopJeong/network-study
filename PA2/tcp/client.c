@@ -30,9 +30,10 @@ send_file(int socket, const char * filename) {
     while((send_bytes = fread(buf, sizeof(char), sizeof(buf), fp)) > 0) {
         send(socket, buf, send_bytes, 0);
         total_send_bytes += send_bytes;
+        printf("%s sending (%d Bytes) ...              \r", filename, total_send_bytes);
     }
 
-    printf("%s sending done :  (%d Bytes)\n", filename, total_send_bytes);
+    printf("%s sending done!                            \n", filename);
     fclose(fp);
     return 0;
 }
