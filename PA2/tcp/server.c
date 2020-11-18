@@ -26,8 +26,8 @@ recv_file(int socket) {
     if(read_bytes <= 0) {
         error_handling("filename recv() error");
     }
-    filename[read_bytes] = 0;
-    printf("filename (%d bytes) : %s\n", read_bytes, filename);
+    //filename[read_bytes] = 0;
+    printf("filename (%d bytes) : %s\n", strlen(filename), filename);
     fp = fopen(filename, "wb");
 
     while((read_bytes = recv(socket, buf, sizeof(buf), 0)) > 0) {

@@ -23,8 +23,9 @@ send_file(int socket, const char * filename) {
     if((fp = fopen(filename, "rb")) == NULL) 
         error_handling("File not Exist");
 
+    memset(buf, sizeof(buf), 0);
     //파일명 보내기
-    send(socket, filename, strlen(filename), 0);
+    send(socket, filename, sizeof(buf), 0);
 
     while((send_bytes = fread(buf, sizeof(char), sizeof(buf), fp)) > 0) {
         send(socket, buf, send_bytes, 0);
