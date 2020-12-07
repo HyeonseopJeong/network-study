@@ -255,10 +255,73 @@ struct HTTPRequest* parse_request_all(FILE *in){
     return  req;
 }
 
+
 void response_to(struct HTTPRequest * req, FILE * out) {
     if(req->error_check) {
         //404
+        fprintf(out, "HTTP/1.%d 404 Not Found\r\n", req->minor_version);
+        fflush(out);
+        printf("404 errorcheck\n");
+        return;
     }
+
+    if(!req->path) {
+        //404
+        fprintf(out, "HTTP/1.%d 404 Not Found\r\n", req->minor_version);
+        fflush(out);
+        printf("404 path null\n");
+        return;
+    }
+
+    if(strcmp(req->method, "get") == 0) {
+        char file_path[BUF_SIZE] = ".";
+        char buf[BUF_SIZE];
+
+        strcat(file_path, req->path); 
+        FILE * fp = fopen(file_path, "r");
+        //해당 파일이 있는지 확인
+        if(!fp) {//없으면
+            //404
+            fprintf(out, "HTTP/1.%d 404 Not Found\r\n", req->minor_version);
+            fflush(out);
+            printf("404 no file\n");
+            return;
+        }
+
+
+        printf("response ready!!\n");
+
+        fseek(fp, 0, SEEK_END); 
+        int file_size = ftell(fp);
+        fseek(fp, 0, SEEK_SET);
+        
+        
+        //response status line
+        fprintf(out, "HTTP/1.%d 200 OK\r\n", req->minor_version);
+        fprintf(out, "Content-Length:%d\r\n", file_size);
+        fprintf(out, "Content-Type:text/html\r\n");
+        fprintf(out, "\r\n");
+        
+        while(feof(fp) == 0) {
+            memset(buf, 0, sizeof(buf));
+            fread(buf, sizeof(char), BUF_SIZE - 1, fp);
+            fprintf(out, "%s", buf);
+        }
+        fflush(out);
+        fclose(fp);
+    }
+    else if(strcmp(req->method, "post") == 0) {
+        //받은 data 출력하기
+
+
+    }
+    else {
+        //404
+        fprintf(out, "HTTP/1.%d 404 Not Found\r\n", req->minor_version);
+        fflush(out);
+        printf("404 method is not get nor post\n");
+    }
+
 }
 
 
@@ -272,7 +335,7 @@ void service(FILE *in , FILE *out){
     //printf("check!\n");
     print_HTTPRequst(req);
 
-    //response_to(req, out);
+    response_to(req, out);
     
     free_request(req);
 }
