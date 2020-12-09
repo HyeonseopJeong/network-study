@@ -129,8 +129,14 @@ struct HTTPRequest* parse_request_all(FILE *in){
     
     //request line 파싱하기
     
-    if(!fgets(buf, sizeof(buf), in))
-        error_handling("fgets() error1");
+
+    if(!fgets(buf, sizeof(buf), in)) {
+        printf("fgets() error1\n");
+        req->error_check = 1;
+        return req;
+    } 
+
+   
 
 
     //method parsing
@@ -196,13 +202,9 @@ struct HTTPRequest* parse_request_all(FILE *in){
     //request headers 파싱하기.
     req->header = NULL;
     while (1) {
-        
-        if(!fgets(buf, sizeof(buf), in)) {
+        if(!fgets(buf, sizeof(buf), in))
+            error_handling("fgets() error2");
             
-            printf("fgets() error2\n");
-            req->error_check = 1;
-            return req;
-        }       
         if(buf[0] == '\n' || (buf[0] == '\r' && buf[1] == '\n'))
             break;
         
