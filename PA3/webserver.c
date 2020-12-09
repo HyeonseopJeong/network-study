@@ -197,9 +197,12 @@ struct HTTPRequest* parse_request_all(FILE *in){
     req->header = NULL;
     while (1) {
         
-        if(!fgets(buf, sizeof(buf), in))
-            error_handling("fgets() error2");
-        
+        if(!fgets(buf, sizeof(buf), in)) {
+            
+            printf("fgets() error2\n");
+            req->error_check = 1;
+            return req;
+        }       
         if(buf[0] == '\n' || (buf[0] == '\r' && buf[1] == '\n'))
             break;
         
@@ -353,20 +356,7 @@ void response_to(struct HTTPRequest * req, FILE * out) {
         body_ptr += sprintf(body_ptr, "<!DOCTYPE html>\n");
         body_ptr += sprintf(body_ptr, "<html>\n");
         body_ptr += sprintf(body_ptr, "\t<body>\n");
-
-       
-        
-        char * q;
-        char * ptr = strtok(req->body, "&");
-        while(ptr) {
-            q = strchr(ptr, '=');
-            *q = '\0';  
-            q += 1;
-            body_ptr += sprintf(body_ptr, "\t\t%s is %s..! </br>\n", ptr, q);
-            ptr = strtok(NULL, "&");
-        }
-
-        //fprintf(out, "here i go far away i'll keep running in this game.\n");
+        body_ptr += sprintf(body_ptr, "\t\t%s\n", req->body);
         body_ptr += sprintf(body_ptr, "\t</body>\n");
         body_ptr += sprintf(body_ptr, "</html>");
 
