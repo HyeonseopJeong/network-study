@@ -50,11 +50,17 @@ void print_HTTPRequst(struct HTTPRequest * req) {
     printf("minor_version : %d\n", req->minor_version);
 
     printf("body length : %d\n", req->body_length);
+    if(req->body_length) {
+        printf("-----body-----\n");
+        printf("%s\n", req->body);
+        printf("--------------\n");
+    }
+
 
     printf("-- Headers -- \n");
     struct HTTPHeader * p = req->header;
 
-    while(!p) {
+    while(p) {
         printf("%s : %s\n", p->name, p->value);
         p = p->next;
     }
@@ -95,7 +101,7 @@ void free_request(struct HTTPRequest * req) {
 char * get_header_value (struct HTTPRequest * req, char * header_name){
     struct HTTPHeader * p = req->header;
 
-    while(!p) {
+    while(p) {
         if(strcmp(p->name, header_name) == 0)
             return p->value;
         p = p->next;
@@ -124,7 +130,7 @@ struct HTTPRequest* parse_request_all(FILE *in){
     //request line 파싱하기
     
     if(!fgets(buf, sizeof(buf), in))
-        error_handling("fgets() error");
+        error_handling("fgets() error1");
 
 
     //method parsing
@@ -185,16 +191,18 @@ struct HTTPRequest* parse_request_all(FILE *in){
 
     //printf("check!\n");
     
-    //request headers parsing
+
+
+    //request headers 파싱하기.
     req->header = NULL;
     while (1) {
         
         if(!fgets(buf, sizeof(buf), in))
-            error_handling("fgets() error");
+            error_handling("fgets() error2");
         
         if(buf[0] == '\n' || (buf[0] == '\r' && buf[1] == '\n'))
             break;
-
+        
         ptr = strchr(buf, ':');
         if(!ptr) {
             printf("headers parsing error!\n");
@@ -203,6 +211,8 @@ struct HTTPRequest* parse_request_all(FILE *in){
         }
         *ptr = '\0';
         ptr += 1;
+        if(*ptr == ' ')
+            ptr += 1;
 
 
         //header name 소문자로 변환
@@ -246,7 +256,7 @@ struct HTTPRequest* parse_request_all(FILE *in){
         memset(req->body, 0, sizeof(req->body));
 
         //request body 내용 읽기.
-        if (fread(req->body, req->body_length, 1, in) < 1) {
+        if (fread(req->body, 1,  req->body_length, in) < 1) {
             error_handling("fread() error");
         }
     } 
@@ -273,11 +283,27 @@ void response_to(struct HTTPRequest * req, FILE * out) {
         return;
     }
 
-    if(strcmp(req->method, "get") == 0) {
-        char file_path[BUF_SIZE] = ".";
-        char buf[BUF_SIZE];
+    char file_path[BUF_SIZE] = ".";
+    char buf[BUF_SIZE];
 
-        strcat(file_path, req->path); 
+    
+    strcat(file_path, req->path);
+
+    if(strcmp(req->method, "get") == 0) {
+         
+        // path가 /(루트) 일 경우 index.html로 바꿔줌.
+        if(strcmp(file_path, "./") == 0) {
+            strcat(file_path, "index.html");
+        }
+
+        //index.html 혹은 query.html이 아닐경우 404
+        if(strcmp(file_path, "./index.html") && strcmp(file_path, "./query.html")) {
+            fprintf(out, "HTTP/1.%d 404 Not Found\r\n", req->minor_version);
+            fflush(out);
+            printf("404 no file\n");
+            return;
+        }
+
         FILE * fp = fopen(file_path, "r");
         //해당 파일이 있는지 확인
         if(!fp) {//없으면
@@ -289,6 +315,8 @@ void response_to(struct HTTPRequest * req, FILE * out) {
         }
 
 
+
+        // 응답 !!
         printf("response ready!!\n");
 
         fseek(fp, 0, SEEK_END); 
@@ -310,10 +338,51 @@ void response_to(struct HTTPRequest * req, FILE * out) {
         fflush(out);
         fclose(fp);
     }
-    else if(strcmp(req->method, "post") == 0) {
-        //받은 data 출력하기
+    else if(strcmp(req->method, "post") == 0) { //post일 경우 path에 상관없이 그냥 body로 받은 data를 출력.
+        
+        char body[BUF_SIZE];
+        memset(body, 0, sizeof(body));
+
+        
 
 
+        //보낼 body 담기.
+
+
+        char * body_ptr = body;
+        body_ptr += sprintf(body_ptr, "<!DOCTYPE html>\n");
+        body_ptr += sprintf(body_ptr, "<html>\n");
+        body_ptr += sprintf(body_ptr, "\t<body>\n");
+
+       
+        
+        char * q;
+        char * ptr = strtok(req->body, "&");
+        while(ptr) {
+            q = strchr(ptr, '=');
+            *q = '\0';  
+            q += 1;
+            body_ptr += sprintf(body_ptr, "\t\t%s is %s..!\n", ptr, q);
+            ptr = strtok(NULL, "&");
+        }
+
+        //fprintf(out, "here i go far away i'll keep running in this game.\n");
+        body_ptr += sprintf(body_ptr, "\t</body>\n");
+        body_ptr += sprintf(body_ptr, "</html>");
+
+
+        printf("body is ...\n");
+        printf("%s\n", body);
+
+        //응답하기!
+
+        //response status line
+        fprintf(out, "HTTP/1.%d 200 OK\r\n", req->minor_version);
+        fprintf(out, "Content-Length:%d\r\n", strlen(body));
+        fprintf(out, "Content-Type:text/html\r\n");
+        fprintf(out, "\r\n");
+        fprintf(out, "%s", body);
+        fflush(out);
     }
     else {
         //404
