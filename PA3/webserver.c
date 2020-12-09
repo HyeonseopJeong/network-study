@@ -362,7 +362,7 @@ void response_to(struct HTTPRequest * req, FILE * out) {
             q = strchr(ptr, '=');
             *q = '\0';  
             q += 1;
-            body_ptr += sprintf(body_ptr, "\t\t%s is %s..!\n", ptr, q);
+            body_ptr += sprintf(body_ptr, "\t\t%s is %s..! </br>\n", ptr, q);
             ptr = strtok(NULL, "&");
         }
 
